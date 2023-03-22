@@ -1,0 +1,160 @@
+SELECT LastName  || ',' || FirstName AS 'Full Name'
+FROM Employee 
+ORDER BY (LENGTH(LastName)+LENGTH(FirstName));
+
+
+-- I select the last and first name, and concatenate it using ||, with a single comma in between them.
+-- I then sort the output by adding the lengths of the LastName and FirstName together (ascending).
+
+
+
+UPDATE Employee 
+SET Phone = '+' || Phone, Fax = '+' || Fax 
+WHERE Phone NOT LIKE '+%' AND Fax NOT LIKE '+%';
+
+
+-- I update the values of Phone and Fax, with a '+' concatenated to the existing values. I also have a where condition to check this is only 
+-- performed on rows which do not already have a '+' preceding the phone and fax number.
+
+
+
+CREATE TABLE Login(
+ Username TEXT PRIMARY KEY NOT NULL,
+ Password TEXT NOT NULL,
+ LastUpdate DATE DEFAULT (datetime('now')),
+ Status TEXT,
+ CustomerID INTEGER NOT NULL,
+ CHECK(Status='active' OR Status = 'inactive'),
+ FOREIGN KEY (CustomerID) REFERENCES Customer (CustomerID)
+ 
+);
+
+
+-- I create a new table with the name 'Login', I set the respective fields with NOT NULL if they are required, and the LastUpdate field has
+-- a default value of the current date and time.
+
+
+
+SELECT title AS 'Album Title', COUNT(a.AlbumID) AS 'Number of Tracks In Album', COUNT(a.AlbumID)*UnitPrice AS 'Price of Album'
+FROM Album AS a, Track AS t
+WHERE a.AlbumID = t.AlbumID 
+GROUP BY a.AlbumID
+HAVING COUNT(a.AlbumID)*UnitPrice >= 30
+ORDER BY COUNT(a.AlbumID)*UnitPrice DESC;
+
+
+-- I list out albums in three columns, title, total number of tracks, and price. I join Album and Track table by using a where conditions.
+-- I then group it by the AlbumID to list all the AlbumIDs out, and then use the HAVING operator so that an aggregate function can be used.
+
+
+SELECT FirstName, CAST((JULIANDAY('now') - JULIANDAY(birthDate))/365.25 AS INT) AS 'Age'
+FROM Employee
+WHERE Title LIKE '%Manager%'
+ORDER BY Age
+LIMIT 1;
+
+-- Q10 Comment
+-- I select the first name and the age of the youngest manager in the company by casting the difference between today's date and the employee's
+-- birth date as an integer. I also use a where condition to ensure the employee is a manager, and then limit it by 1 to find the youngest person.
+
+
+
+INSERT INTO Playlist(Name)	
+VALUES('Background music');
+
+INSERT INTO PlaylistTrack(PlaylistID, TrackID)
+SELECT p.PlaylistID, t.TrackID 
+FROM Track t, (SELECT GenreID FROM Genre WHERE Name = 'Jazz') g, (SELECT PlaylistID FROM Playlist WHERE Name='Background music') p 
+WHERE t.GenreID = g.GenreID 
+ORDER BY Millisecond DESC 
+LIMIT 10;
+
+
+-- In this question I was tasked with writing two individual SQL statements. My first statement creates a new playlist in the playlist table
+-- called 'Background music'. My second SQL statement inserts the results from a query. The query gets the ID of the 'Jazz' Genre, and the ID of the 'Background music' playlist via 
+-- subqueries. Subqueries are used to prevent hardcoding of values. I then order the results by the longest duration descending, and limit 10
+-- so that 10 tracks are returned. 
+
+
+
+SELECT 
+    CASE
+		WHEN m.Name LIKE '%AAC%' 
+			THEN 'AAC'
+			ELSE 'non-AAC'
+		END AS 'Media',
+COUNT(*) as Tracks
+FROM Track t
+JOIN MediaType m
+ON m.MediaTypeId = t.MediaTypeID
+GROUP BY Media 
+UNION  
+SELECT 'Total', COUNT(TrackID)
+FROM Track
+ORDER BY Tracks
+
+
+-- I have written a SQL statement that selects the media types using CASE operator, and the count of the media type from the track table. I then joined this with the MediaType table
+-- by the MediaTypeID. A GROUP BY operator is neccessary to output both AAC and non-AAC. This is then UNIONed with a single SQL statement which has 'Total' in the first column, and then
+-- and the count of the total tracks.
+
+
+
+SELECT UPPER(LTRIM(RTRIM(SUBSTR(SUBSTR(Email, INSTR(Email, '@')),1,INSTR(SUBSTR(Email, INSTR(Email, '@')), '.') ),'.'),'@')) AS 'Domain provider', PRINTF('%.2f',((COUNT('Domain provider')*1.00)*100/(c.namecount))) || '%' AS 'Percentage of Customer'
+FROM Customer, (SELECT COUNT(FirstName) AS namecount FROM Customer)c
+GROUP BY SUBSTR(SUBSTR(Email, INSTR(Email, '@') + 1),1, INSTR(SUBSTR(Email, INSTR(email, '@') + 1), '.') - 1)
+HAVING ((COUNT('Domain provider')*1.00*100)/(c.namecount)) > 5
+ORDER BY COUNT(*) DESC;
+
+
+-- In this relatively complicated SQL statement, the process I used to retain only the domain was to use INSTR and SUBSTR. INSTR(Email, '@') returns the position of the 
+-- '@' symbol. SUBSTR is then performed on email, and this value from INSTR, to get the characters from the '@' symbol to the end of the email string.
+-- 
+-- An INSTR operator then finds the characters including the '@' and the period, '.' This is important as it forms the Z, in SUBSTR, as Z defines
+-- how long the substring will be. The X in the SUBSTR is the domain provider (but including the .com.br etc. I'm nearly done here!
+-- The Y parameter tells me to start from the 1st character. These paramaters form the overall SUBSTR but they include the '@' and the '.'
+
+-- To fix this, I perform a left trim and right trim on the substring, removing both the '@' and the '.' The trim will work for all email instances (and is not hard-coded) 
+-- as the domain provider will always be between '@' and '.'
+
+-- An UPPER function is then performed on the entire substring, allowing me to finally obtain the domain provider. 
+-- HAVING operator removes percentages less than 5%, then sorts it by descending. Printf also allows for two decimal places after conversion into
+-- a percentage.
+
+
+CREATE VIEW [CustomerView] AS
+SELECT co.Country, SUM(Individual) AS 'Individual', SUM(Company) AS 'Company'
+	FROM (SELECT CASE
+		WHEN Company IS NOT NULL
+			THEN 1
+			ELSE 0
+	END AS Company, 
+	CASE 
+		WHEN Company IS NULL
+			THEN 1
+			ELSE 0
+	END AS Individual, 
+	Country
+	FROM Customer) co
+GROUP BY co.Country
+
+
+-- I create a  view called 'CustomerView', I then select the country name, and the sum of each individual customer and company customer by
+-- each country. The purpose of the SUM is because of the CASE operators in my subquery. I have two cases, one where COMPANY is NULL,
+-- and one where COMPANY is NOT NULL. They have corresponding THEN 1, and ELSE 0 for each case. These 1 and 0s are then aliased to Company 
+-- and Individual. Then, by doing SUM(Individual), and SUM(Company) we get the number of individual customers and company customers for each 
+-- country. ELSE 0 is also required, as if without it, we will result in NULL fields.
+
+ 
+ 
+
+SELECT FirstName AS 'First Name', CAST((JULIANDAY('now') - JULIANDAY(HireDate))/365.25 AS INT) AS 'Total years of employment'
+FROM Employee e, (SELECT AVG((JULIANDAY('now') - JULIANDAY(HireDate))/365.25) AS 'Average' FROM Employee) a
+ORDER BY ABS(a.Average - ((JULIANDAY('now') - JULIANDAY(HireDate))/365.25))
+LIMIT 1
+
+
+-- In this SQL statement, I obtain the number of years employed at the company by an employee, and the average number of years at the company. I have not casted
+-- these as integers yet so that I can find the exact difference between the years an employee worked and the average number of years. I then absolute this
+-- (in case it is negative), and then sort by ascending (as smallest difference will be the closest to average), and then limit 1 to find the closest employee to the average. 
+-- In my select line, the difference is casted as an INT, so that the returned employment year will be an integer.
